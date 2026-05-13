@@ -1,6 +1,6 @@
 ---
 name: nyxid
-version: "0.4"
+version: "0.5"
 description: Brokers credentials for downstream services (OpenAI, Anthropic, GitHub, Lark, custom APIs, SSH, MCP) so the agent never sees raw API keys or OAuth tokens. Use whenever the user asks to call, proxy, or authenticate against a third-party API/service, mentions NyxID, asks to "connect", "add a service", "set up an API key", manage credentials/nodes/MCP, send messages through bot platforms, or wire up SSH access. Operate exclusively through the `nyxid` CLI.
 metadata:
   category: tool-based
@@ -44,7 +44,7 @@ Install the NyxID CLI (one-time):
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ChronoAIProject/NyxID/main/skills/nyxid/scripts/install.sh)"
 ```
 
-The installer handles everything: installs Rust if missing, builds the CLI, and configures your shell PATH. Open a new terminal afterwards, then log in:
+The installer downloads an attested prebuilt release binary (verified against the GitHub release workflow's Sigstore attestation), installs it into a versioned layout under `~/.local/share/nyxid/versions/`, links `~/.local/bin/nyxid` to the active version, and configures your shell PATH. No Rust toolchain required. The installer falls back to a Cargo source build only on platforms with no published binary. Open a new terminal afterwards, then log in:
 
 ```bash
 nyxid login --base-url https://nyx-api.chrono-ai.fun
@@ -67,9 +67,16 @@ The CLI stores tokens at `~/.nyxid/` and auto-refreshes them. The base URL is sa
 Update the CLI and all installed AI skills in one command:
 
 ```bash
-nyxid update                                 # update CLI binary + all installed skills
-nyxid update --skills-only                   # update only installed skills (skip CLI rebuild)
+nyxid update                                 # download + verify + install the latest prebuilt CLI, then update skills
+nyxid update --skills-only                   # update only installed skills (skip CLI download)
+nyxid update --check                         # report installed vs latest without installing anything
+nyxid update --version 0.5.0                 # pin to a specific release (rollback or test a prerelease)
+nyxid update --rollback                      # retarget the active symlink to the previous installed version
+nyxid update --list-versions                 # list versions installed under ~/.local/share/nyxid/versions
+nyxid update --from-source                   # force the cargo install fallback (useful on unsupported targets)
 ```
+
+`nyxid update` verifies the downloaded binary against the GitHub release workflow's Sigstore attestation before swapping the active symlink. Verification failures fail closed; pass `--insecure-skip-verify` only as an explicit opt-out.
 
 To update a specific tool's skill only:
 
@@ -77,11 +84,32 @@ To update a specific tool's skill only:
 nyxid ai-setup update --tool claude-code     # update a specific tool
 ```
 
+When running any nyxid subcommand interactively, the CLI also prints a one-line "newer version available" notice once per 24h (telemetry-free; only hits the GitHub releases API). Set `NYXID_NO_UPDATE_CHECK=1` to disable, or run in CI (`CI=true` is auto-detected).
+
 If `nyxid update` is not recognized, your CLI predates this command. Update it first with:
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/ChronoAIProject/NyxID/main/skills/nyxid/scripts/install.sh)"
 ```
+
+The wrapper installer detects an existing legacy single-file install at `~/.local/bin/nyxid` and migrates it into the versioned layout transparently.
+
+## Diagnosing install or auth issues
+
+When the user reports "nyxid is broken", "I can't log in", "is my install OK", or similar, run `nyxid doctor` first before debugging individual commands. It prints a structured health check covering:
+
+- **Installation**: binary path, active symlink target, whether the install dir is in `$PATH`
+- **GitHub Releases**: API reachability, latest release tag vs installed, rate limit + reset time
+- **Authentication**: stored base URL, login state (token expiry shown; the token itself is never printed)
+- **Telemetry**: consent state
+- **Update check**: last-check timestamp, whether auto-check is enabled
+
+```bash
+nyxid doctor                                 # human-readable report
+nyxid doctor --json                          # structured output for scripts
+```
+
+Doctor exits non-zero if any check fails (warnings do not fail). Use it as the first triage step, then drill into the failing area with the specific reference page (`references/admin.md` for auth/error codes, `references/services.md` for service issues, etc.).
 
 ## Reference map
 
@@ -93,11 +121,11 @@ Load the matching `references/<file>.md` when the user asks for one of these top
 | "call the API", "proxy request", "send a message via Telegram/Discord/Slack" (single call), curl examples, raw HTTP integration, WebSocket auth-frame injection, Home Assistant connection | `references/proxy.md` |
 | "list / rename / delete a service", attaching an OpenAPI spec to a custom endpoint, default headers, "create / rotate / delete an API key", agent key bindings, callback URLs, scope/rate-limit edits | `references/managing.md` |
 | Anything mentioning "org", "organization", "shared credentials", "family / company key", invites, role scopes, primary-org tiebreaker, org-level approval policies, `--via-service`, CLI profiles | `references/organizations.md` |
-| "set up a node", "credentials on my own machine", org-owned/shared nodes, node daemon (install/start/stop/logs), node credentials add/setup/list, SSH exec / terminal / cert-issue, SSH ProxyCommand | `references/nodes.md` |
+| "set up a node", "credentials on my own machine", org-owned/shared nodes, node daemon (install/start/stop/logs), node credentials add/setup/list, SSH node-key credentials, SSH exec / terminal / cert-issue, SSH ProxyCommand | `references/nodes.md` |
 | "approve / deny", "set up notifications", Telegram link, push notifications, approval grants, per-service approval configs | `references/notifications.md` |
 | "channel bot", "register a bot", conversation routing, `/channel-relay/reply`, callback / reply tokens, ADR-013 passthrough semantics, device events / HTTP Event Gateway, `/channel-events/{id}` | `references/channels.md` |
 | OpenClaw setup, `llm-openclaw` transport selection, `x-openclaw-scopes` default header | `references/openclaw.md` |
-| `nyxid whoami / status / profile / mfa / session`, `nyxid admin invite-code`, `nyxid mcp config`, error codes (1001/1002/7000/7001/8003, downstream 403 / WAF / User-Agent override) | `references/admin.md` |
+| `nyxid whoami / status / profile / mfa / session`, `nyxid admin user list/show/set-role`, platform roles (admin / operator / user), `nyxid admin invite-code`, `nyxid mcp config`, error codes (1001/1002/7000/7001/8003, downstream 403 / WAF / User-Agent override) | `references/admin.md` |
 | "list / revoke broker authorizations", "what apps hold credentials for me", `/settings/authorizations`, `nyxid oauth bindings`, OAuth `binding_id` / token vault, distinction from "Authorized Apps" (consents) | `references/oauth-broker.md` |
 
 Prefer the canonical reference over guessing. If a topic spans two files (e.g. "create an org-shared API key with rate limits"), load both `organizations.md` and `managing.md`.
