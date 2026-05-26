@@ -1,7 +1,7 @@
 # ornn-skills
 
 Auto-generated, **read-only** mirror of public + system skills from
-[Ornn](https://ornn.chrono-ai.fun).
+[Ornn](https://ornn.ornn-cluster.local).
 
 ## Install a skill
 
@@ -28,7 +28,7 @@ instead — see the agent manual on Ornn for details.
 ## Canonical source of truth
 
 Each skill's canonical version lives at
-`https://ornn.chrono-ai.fun/skills/<name>`. Edits to this
+`https://ornn.ornn-cluster.local/skills/<name>`. Edits to this
 GitHub repo are not propagated back; they will be overwritten by the
 next sync.
 
