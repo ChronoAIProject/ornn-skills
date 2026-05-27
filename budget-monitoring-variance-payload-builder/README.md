@@ -1,6 +1,6 @@
 # budget-monitoring-variance-payload-builder
 
-> Build the Lark alert payload for Aevatar-native budget monitoring by comparing planned and actual spend records and producing a concise variance summary.
+> Build a deterministic Lark budget variance alert payload from normalized budget and actual spend records for Aevatar-native budget monitoring.
 
 ---
 
@@ -8,8 +8,8 @@
 
 Edits here are NOT propagated back. Submit changes on Ornn.
 
-- Latest version: `1.0`
-- Last synced: `2026-05-27T07:00:02.203Z`
+- Latest version: `1.1`
+- Last synced: `2026-05-27T07:18:15.695Z`
 
 ## Install
 
