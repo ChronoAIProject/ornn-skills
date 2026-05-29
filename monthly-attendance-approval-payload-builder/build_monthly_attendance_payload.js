@@ -87,7 +87,7 @@ function buildApproval(input) {
       approvalPath: '/open-apis/approval/v4/instances',
       approvalBody: { approval_code: approvalCode, user_id: submitterId, form: JSON.stringify(form) },
       notificationPath: '/open-apis/im/v1/messages?receive_id_type=user_id',
-      notificationBody: messageBody(notifyUserId, card)
+      notificationBody: notifyUserId ? messageBody(notifyUserId, card) : undefined
     }
   };
 }
@@ -97,6 +97,7 @@ function buildReminder(input) {
   const year = input.year || now.getFullYear();
   const month = input.month || (now.getMonth() + 1);
   const notifyUserId = input.notifyUserId || input.notify_user_id || '831cg5af';
+  if (!notifyUserId) return { needs_more_information: true, missing: ['notifyUserId'] };
   const daysLeft = input.daysLeft ?? (new Date(year, month, 0).getDate() - now.getDate());
   const card = {
     config: { wide_screen_mode: true },

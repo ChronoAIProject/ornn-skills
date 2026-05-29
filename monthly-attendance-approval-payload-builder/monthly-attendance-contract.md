@@ -9,7 +9,7 @@ The original workflow has two schedule paths:
 1. On the last day of the month, read attendance records, create a Lark approval instance, and send a DM notification.
 2. On the 27th, send a reminder DM.
 
-This skill implements approval and reminder payload construction only.
+This skill implements approval and reminder payload construction. Runner mode performs the external Lark calls through NyxID proxy.
 
 ## Defaults
 

@@ -1,6 +1,6 @@
 # monthly-attendance-approval-payload-builder
 
-> Builds Lark monthly attendance approval and reminder payloads from normalized attendance records.
+> Builds Lark monthly attendance approval/reminder payloads and, when asked, runs the full attendance flow through a NyxID service instead of direct Lark credentials.
 
 ---
 
@@ -8,8 +8,8 @@
 
 Edits here are NOT propagated back. Submit changes on Ornn.
 
-- Latest version: `1.0`
-- Last synced: `2026-05-29T08:00:02.193Z`
+- Latest version: `1.1`
+- Last synced: `2026-05-29T08:24:51.071Z`
 
 ## Install
 
