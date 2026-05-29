@@ -1,6 +1,6 @@
 # budget-monitoring-variance-payload-builder
 
-> Builds a deterministic Lark budget variance alert from four Aevatar/NyxID-read Bitable record sets. Use for budget-monitoring runs after the caller has fetched core budget, core actual, aelf budget, and aelf actual records. Keeps credentials and connector settings outside the skill.
+> Builds deterministic Lark budget variance payloads and, when asked, runs the full budget monitoring flow through a NyxID service instead of direct Lark credentials.
 
 ---
 
@@ -8,8 +8,8 @@
 
 Edits here are NOT propagated back. Submit changes on Ornn.
 
-- Latest version: `1.2`
-- Last synced: `2026-05-29T07:00:01.696Z`
+- Latest version: `1.3`
+- Last synced: `2026-05-29T07:47:49.142Z`
 
 ## Install
 

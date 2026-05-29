@@ -1,6 +1,6 @@
 # Budget variance contract
 
-This contract defines the deterministic behavior for `budget-monitoring-variance-payload-builder`.
+This contract defines the deterministic behavior for `budget-monitoring-variance-payload-builder` payload-builder mode.
 
 ## Record sources
 
