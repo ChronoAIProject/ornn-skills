@@ -1,0 +1,44 @@
+{
+  "name": "monthly-attendance-cn",
+  "capability": "monthly-attendance-approval",
+  "mode": "nyxid-service-runner",
+  "nyxid": {
+    "serviceSlug": "monthly-attendance-cn",
+    "configSource": "service.default_request_headers",
+    "proxyCalls": "nyxid proxy request <serviceSlug> <lark-path>"
+  },
+  "serviceDefaultHeaders": {
+    "x-attendance-bitable-app-token": "<lark-bitable-app-token>",
+    "x-attendance-table-id": "<attendance-table-id>",
+    "x-attendance-doc-url": "https://...",
+    "x-attendance-approval-code": "3F02FB04-3919-4089-B42B-B1B557820EB5",
+    "x-attendance-submitter-id": "ee689459",
+    "x-attendance-notify-user-id": "831cg5af",
+    "x-attendance-year": "2026",
+    "x-attendance-month": "5"
+  },
+  "skill": {
+    "tool": "use_skill",
+    "name": "monthly-attendance-approval-payload-builder",
+    "input": {
+      "serviceSlug": "monthly-attendance-cn",
+      "mode": "approval"
+    }
+  },
+  "triggers": {
+    "approval": {
+      "schedule": {
+        "source": "external-or-aevatar",
+        "when": "last-day-of-month 10:00",
+        "timezone": "Asia/Shanghai"
+      }
+    },
+    "reminder": {
+      "schedule": {
+        "source": "external-or-aevatar",
+        "when": "day-27 10:00",
+        "timezone": "Asia/Shanghai"
+      }
+    }
+  }
+}
