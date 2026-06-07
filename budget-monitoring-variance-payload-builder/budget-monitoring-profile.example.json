@@ -1,0 +1,41 @@
+{
+  "name": "budget-monitoring-test",
+  "capability": "budget-monitoring",
+  "mode": "nyxid-service-runner",
+  "nyxid": {
+    "serviceSlug": "budget-monitoring-p2",
+    "configSource": "service.default_headers",
+    "proxyCalls": "nyxid proxy request <serviceSlug> <lark-path>"
+  },
+  "serviceDefaultHeaders": {
+    "x-budget-bitable-app-token": "PU3CbfDWdaRqRVsl9culD659gld",
+    "x-budget-core-budget-table-id": "tblD7J33vqUYzSIr",
+    "x-budget-core-actual-table-id": "tbluiMDSrSRHKXnW",
+    "x-budget-aelf-budget-table-id": "tblOw64j6L3B2NKJ",
+    "x-budget-aelf-actual-table-id": "tbldWYaH9c5kCfgs",
+    "x-budget-receive-id": "ou_xxx",
+    "x-budget-receive-id-type": "open_id",
+    "x-budget-watch-threshold-percent": "80",
+    "x-budget-alert-threshold-percent": "100",
+    "x-budget-critical-threshold-percent": "120"
+  },
+  "skill": {
+    "tool": "use_skill",
+    "name": "budget-monitoring-variance-payload-builder",
+    "input": {
+      "serviceSlug": "budget-monitoring-p2"
+    }
+  },
+  "trigger": {
+    "manualUtterances": [
+      "我想看预算",
+      "查看预算",
+      "跑一下预算监控"
+    ],
+    "schedule": {
+      "source": "external-or-aevatar",
+      "cron": "0 9 * * 1",
+      "timezone": "Asia/Singapore"
+    }
+  }
+}
