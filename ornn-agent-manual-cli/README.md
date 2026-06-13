@@ -4,12 +4,12 @@
 
 ---
 
-**Mirrored from [Ornn](https://ornn.ornn-cluster.local/skills/ornn-agent-manual-cli) — read-only.**
+**Mirrored from [Ornn](https://ornn.chrono-ai.fun/skills/ornn-agent-manual-cli) — read-only.**
 
 Edits here are NOT propagated back. Submit changes on Ornn.
 
-- Latest version: `1.1`
-- Last synced: `2026-06-13T18:00:00.044Z`
+- Latest version: `1.2`
+- Last synced: `2026-06-13T19:00:02.021Z`
 
 ## Install
 
