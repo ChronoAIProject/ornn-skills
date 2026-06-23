@@ -1,7 +1,7 @@
 ---
 name: aevatar-platform-map
 description: Panorama, entry point, and catalog for the whole Aevatar skill collection driven over its REST API. Load this FIRST whenever a user wants to build, publish, schedule, or operate things on Aevatar — "create an agent team", "make a workflow / member", "publish/bind a service", "register it with NyxID", "set up a recurring/scheduled run", "deploy an agent", "invoke my service" — or just wants to know what aevatar skills exist. It teaches the object model (scope → team → member(workflow/script/gagent) → service → schedule), how to authenticate with a NyxID token, how to resolve your scope, and indexes every member of the aevatar skill family (control-plane + authoring + diagnostics + safety-net), all held together by the shared `aevatar` tag. It does not perform the work itself — it routes you to the right companion skill.
-version: "1.1"
+version: "1.2"
 metadata:
   category: plain
   tag:
@@ -55,14 +55,31 @@ service (register to NyxID) → schedule it.**
   scopeId=$(curl -s -H "Authorization: Bearer $TOK" "$BASE/api/studio/context" | jq -r .scopeId)
   ```
   (`GET /api/auth/me` and `GET /api/workflow/observatory/me` also return `scopeId`.)
+  No `jq` on the box? Any JSON reader works — e.g. pipe to
+  `python3 -c 'import sys,json;print(json.load(sys.stdin)["scopeId"])'`. And make these calls with
+  the **`curl` binary** (a WAF may 403 Python's `urllib`/`requests`).
 - All studio resources live under `/api/scopes/{scopeId}/...`. Account-level service and
   schedule management live under `/api/services` and `/api/schedules`.
+
+## Two caller modes (this matters for the workflow skill)
+
+Most of this family is **plain REST you call as a client** with the bearer above — that is the
+default assumption here and in `team-builder` / `service-publisher` / `scheduler`. The one
+exception is **`aevatar-workflow-authoring`**, written for the model running *inside* an aevatar
+session with the nyxid MCP connected, where it uses the **server-side tools**
+`aevatar_start_workflow` / `ornn_publish_skill` / `use_skill` / `nyxid_services`. If you are an
+external client **without** those tools, that skill also documents a full **client REST path**:
+dry-run a workflow with `POST /api/scopes/{scopeId}/workflow/draft-run` (body
+`{prompt, workflowYamls:[…]}`), and publish the workflow skill to ornn by POSTing a zip to
+`…/api/v1/proxy/s/ornn-api/api/v1/skills` (with the workflow YAML under `assets/`). Pick whichever
+surface your tool list actually supports — do not try to call the server-side tools as HTTP
+endpoints (they are not).
 
 ## Which skill for which task (router)
 
 | You want to… | Use the skill | Key endpoints |
 |---|---|---|
-| Turn an idea into a runnable **workflow YAML** | `aevatar-workflow-authoring` | `aevatar_start_workflow`, `/api/scopes/{id}/workflows` |
+| Turn an idea into a runnable **workflow YAML** | `aevatar-workflow-authoring` | server-side tools `aevatar_start_workflow`/`ornn_publish_skill`, **or** client REST `…/workflow/draft-run` + ornn zip publish (see *Two caller modes*) |
 | Create a **team**, create **members** (workflow/script/gagent), bind them, set the entry member | `aevatar-team-builder` | `/api/scopes/{id}/teams`, `/members`, `/members/{id}/binding` |
 | **Publish** a member/team **as a service** and **register it to NyxID**; verify it | `aevatar-service-publisher` | `/api/scopes/{id}/binding`, `/api/services/*`, `/members/{id}/published-service` |
 | Run it on a **cron schedule** (authenticated as you) | `aevatar-scheduler` | `/api/schedules`, `:run-now`, `:enable`, `:disable` |
@@ -88,7 +105,8 @@ map is the canonical entry point; the rest are pulled on demand.
 
 **Author a workflow** (`category: tool-based`, public)
 - `aevatar-workflow-authoring` — turn a request into a validated, persisted workflow YAML
-  (server-side `aevatar_start_workflow` / `ornn_publish_skill`). Its output is the workflow
+  (server-side `aevatar_start_workflow` / `ornn_publish_skill`, **or** the client REST path —
+  `draft-run` + ornn zip publish — see *Two caller modes* above). Its output is the workflow
   a `team-builder` member binds or a `service-publisher` scope binding publishes.
 
 **Diagnose — capability probes** (`category: plain`; currently private/owner-only)
