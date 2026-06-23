@@ -1,7 +1,7 @@
 ---
 name: aevatar-workflow-authoring
 description: Author, validate, and persist an executable aevatar workflow from a natural-language request — use it when the user wants to create, build, set up, or automate a multi-step task as a runnable aevatar workflow (make a workflow that…, automate…, build a pipeline…, set up a recurring…). It generates workflow YAML, dispatch-validates it, then saves it as a reusable workflow that can be re-run and watched in the observatory. Not for running an existing workflow — search for that and start it instead.
-version: "1.0"
+version: "1.1"
 metadata:
   category: tool-based
   tool-list:
@@ -22,6 +22,8 @@ metadata:
 You turn a user's natural-language request into a **valid, test-run, reusable** aevatar workflow. A workflow is a YAML document of `roles` + `steps` that the engine executes; once validated you persist it as a skill so the user can re-run it and watch it in the observatory.
 
 Everything you need is in this document — the DSL, the engine rules, the tools, and worked examples. Follow the protocol in order.
+
+> **Two execution surfaces — know which one you are *before* step 3.** Steps 3 / 5 / 6 below call the *server-side agent tools* `nyxid_services`, `aevatar_start_workflow`, and `ornn_publish_skill`. Those exist **only** when you are the model running **inside** an aevatar session with the nyxid MCP connected. If instead you are an external **client** holding only a NyxID bearer token (e.g. `~/.nyxid/access_token`) — the same identity the sibling skills (`aevatar-team-builder`, `aevatar-service-publisher`, `aevatar-scheduler`) assume — **those three tools are not callable**, and you dry-run + publish over plain authenticated REST instead. Jump to **[Client path (no nyxid MCP)](#client-path-no-nyxid-mcp--dry-run--publish-over-rest)** at the end; the DSL, engine rules, and examples in between apply to both surfaces.
 
 ---
 
@@ -170,11 +172,17 @@ Advanced notes: `human_approval`/`wait_signal` suspend the run until a resume/si
 
 ### Interpolation
 
-- `$input` — the current step's input (previous step's output, or the run prompt).
-- `${steps.<id>.text}` — a prior step's raw text output.
-- `${steps.<id>.json.<field>}` — a field from a prior step whose output was a JSON object (e.g. a `tool_call` result).
-- `${steps.<id>.annotations.<ns>.<key>}` — annotation values (e.g. `lease.holder_token`).
-- Expression helpers in conditions: `${eq(a,b)}`, `${lt(i,5)}`, `${add(x,y)}`, etc.
+- `$input` — the current step's input (the previous step's output, or — for the FIRST step — the run prompt). This is how a value flows step-to-step.
+- `${steps.<id>.output}` — a prior step's text output. **It is `.output`, NOT `.text`.** The engine registers `steps.<id>.output` and never `steps.<id>.text`, so `${steps.<id>.text}` silently resolves to an empty string — the run still shows every step "completed", but a tool/connector downstream receives an empty argument and fails.
+- `${<name>}` — a workflow variable written by an `assign` step (`target: <name>`). This is the canonical way to read a captured value back in a later step; `${steps.<capture-id>.text}` does NOT work (use the bare `${<name>}`, or equivalently `${steps.<capture-id>.output}`).
+- `${steps.<id>.json.<field>}` — a field from a prior step whose output was a JSON object (e.g. a `tool_call` result). Also: `${steps.<id>.success}`, `${steps.<id>.error}`, `${steps.<id>.annotations.<ns>.<key>}`.
+- Expression functions (usable in any value, incl. `condition`): `if`, `concat`, `isblank`, `length`, `not`, `and`, `or`, `upper`, `lower`, `trim`, `json`, `add`, `sub`, `mul`, `div`, `eq`, `lt`, `lte`, `gt`. **There is no `contains`/substring function.**
+
+> **Gotchas that silently break runs (verified against the engine — a clean test run does NOT catch these, because failed tool calls return their error as ordinary step output):**
+> - **`${steps.<id>.text}` is always empty — use `${steps.<id>.output}`.** This is the #1 cause of "every step completed but the connector got an empty argument."
+> - **Read an `assign`ed value with the bare `${<target>}`**, not `${steps.<capture-id>.text}`.
+> - **`transform op: split` joins all parts with `\n---\n` and ignores any `index`** — it is for fan-out, not single-element extraction. To use one segment of `a/b` (e.g. an `owner/repo` in a path), pass the whole string where the `/` is already correct rather than splitting it apart.
+> - **`conditional.condition`** is interpolated first; if the result is not literally `true`/`false`, the engine does a substring `$input.Contains(condition)`. Since there is no `contains` function, build "any/all contain token" checks around this: `concat` the inputs into one string in the prior step, then set `condition` to the literal token.
 
 ---
 
@@ -245,6 +253,113 @@ Once the draft dispatches without a parse error, publish a private skill that ca
 Choose a clear `name`/`description` so the user (and future searches) can find it. Publishing is private by default; the user can later promote it to public on the platform.
 
 **Re-run later:** the user (or their model) loads it with `use_skill("<name>")` — which mounts the workflow into their scope — then calls `aevatar_start_workflow` with `workflow_id: "<name>"`. The run goes through the normal engine path and is visible in the observatory.
+
+---
+
+## Client path (no nyxid MCP) — dry-run + publish over REST
+
+Use this whole section when you hold a **NyxID bearer token** but the server-side tools
+(`aevatar_start_workflow` / `ornn_publish_skill` / `use_skill` / `nyxid_services`) are **not** in
+your tool list. Everything here is plain authenticated REST against the same control-plane base
+the sibling aevatar skills use. (All of it is verified live; none of it requires reading aevatar
+source.)
+
+### Bootstrap
+```bash
+BASE=https://aevatar-console-backend-api.aevatar.ai
+TOK=$(tr -d '\n' < ~/.nyxid/access_token)          # or the agent's own NyxID bearer
+NYX=$(tr -d '\n' < ~/.nyxid/base_url)               # e.g. https://nyx.chrono-ai.fun
+scopeId=$(curl -s -H "Authorization: Bearer $TOK" "$BASE/api/studio/context" | jq -r .scopeId)
+```
+No `jq`? Any JSON reader works, e.g.
+`... | python3 -c 'import sys,json;print(json.load(sys.stdin)["scopeId"])'`.
+(WAF can 403 Python's `urllib` — drive these calls with the `curl` binary, not a Python HTTP client.)
+
+### Connectors
+The `nyxid_services` inventory tool is server-side. As a client you must know any external
+connector **slugs** out-of-band (nyxid CLI / console); the dry-run path below assumes a
+workflow with **no** external connectors (pure `llm_call`/`transform`), which is the most
+reliable thing to validate. Never invent a slug.
+
+### Dry-run (the client replacement for `aevatar_start_workflow`) — `draft-run`
+`aevatar_start_workflow` is a **server-side agent tool dispatched through the engine, not a REST
+endpoint** — a client cannot call it. The client dry-run is the **draft-run** endpoint, which
+takes the YAML inline:
+```bash
+curl -sN --max-time 120 -X POST -H "Authorization: Bearer $TOK" -H "Content-Type: application/json" \
+  "$BASE/api/scopes/$scopeId/workflow/draft-run" \
+  -d "$(python3 -c 'import json;print(json.dumps({"prompt":"<test input>","workflowYamls":[open("workflow.yaml").read()]}))')"
+```
+Body (JSON, **camelCase**): `prompt` (string) + `workflowYamls` (array of YAML strings,
+**required** — omitting it returns 400). The response is an **SSE stream** and the run executes
+synchronously through the connection. Judge it like the server-side validate step:
+- **HTTP 200 + the stream opens with lifecycle/observation frames, no parse/4xx error → structural pass.** You can stop reading there; you do not need to wait for the end.
+- A parse/validation/4xx error → fix the YAML and retry (cap **2**).
+
+**Reading the SSE frames** (so a naive parser doesn't see "nothing"): each `data:` line is JSON,
+and two kinds interleave — there is **no flat `type` field**:
+- *Lifecycle*, keyed by a top-level field: `{"stepStarted":{"stepName":…}}`,
+  `{"stepFinished":{"stepName":…}}`, `{"usage":{…}}`, `{"runFinished":{…}}`,
+  `{"stateSnapshot":{…}}`. A matched `stepStarted`+`stepFinished` per step proves each step ran;
+  `runFinished` marks the end.
+- *Raw observation*: `{"custom":{"name":"aevatar.raw.observed",…}}` — these carry the actual step
+  **output text** (search recursively under `output` / `content`).
+
+`draft-run` is **not** observable in `/workflow/observatory` (it is a throwaway validation run).
+For an observable run, publish + invoke (below / sibling skills).
+
+### Publish the workflow skill to ornn (the client replacement for `ornn_publish_skill`) — REST zip
+`ornn_publish_skill` is also server-side. The client publishes a **zip** through the nyxid proxy
+(slug **`ornn-api`**, not `ornn`). Build this exact layout — a **root folder**, `SKILL.md` at the
+root, and the workflow YAML under **`assets/`** (the validator **rejects a `workflows/` root dir**):
+```
+demo-skill/
+  SKILL.md
+  assets/
+    my_workflow.yaml      # top-level `name:` + `steps:` → auto-extracted; its `name` is the workflow id
+```
+The platform's extractor scans `assets/*.{yaml,yml}` and treats any YAML having **both** a
+top-level `name` and `steps` as a runnable workflow whose `workflow_id` equals that `name`.
+
+`SKILL.md` frontmatter **must nest under `metadata:`** (flat top-level `category`/`output_type`/
+`tool_list` is rejected). A workflow skill is **`category: mixed`** with these **kebab-case** keys —
+all three are required for `mixed` (and for `runtime-based`):
+```yaml
+---
+name: demo-skill
+description: <one line — what it does>
+version: "1.0"
+metadata:
+  category: mixed
+  output-type: text                 # required for mixed / runtime-based
+  runtime:                          # required; MUST be a YAML array — a bare string is rejected
+    - aevatar-workflow              # the workflow runtime (NOT node/python)
+  tool-list:                        # required for mixed
+    - aevatar_start_workflow
+  tag: [demo, workflow, aevatar]    # singular `tag`, ≤10
+---
+```
+Then **validate first** (the format oracle — read every `violations[].rule`/`message` and fix),
+then **upload** (re-uploading the **same `name`** later creates a **new version**):
+```bash
+cd <parent>; zip -r demo-skill.zip demo-skill                 # root folder MUST be included
+# 1) validate → {"data":{"valid":bool,"violations":[{"rule","message"}]}}
+curl -s -X POST -H "Authorization: Bearer $TOK" -H "Content-Type: application/zip" \
+  --data-binary @demo-skill.zip "$NYX/api/v1/proxy/s/ornn-api/api/v1/skill-format/validate"
+# 2) publish (private by default; promote to public separately)
+curl -s -X POST -H "Authorization: Bearer $TOK" -H "Content-Type: application/zip" \
+  --data-binary @demo-skill.zip "$NYX/api/v1/proxy/s/ornn-api/api/v1/skills"
+# verify
+curl -s -H "Authorization: Bearer $TOK" "$NYX/api/v1/proxy/s/ornn-api/api/v1/skills/demo-skill"
+```
+The server normalizes the kebab frontmatter into its stored model
+(`runtimes:[{runtime,dependencies,envs}]`, `tools:[{tool,type:mcp}]`, `outputType`).
+
+### Run a published workflow skill as a client
+The `use_skill` → `aevatar_start_workflow` mount path is server-side. As a client you take the
+control-plane route instead: bind the workflow to a **team member**, then invoke the published
+service. Binding a member **is** publishing a service; its `chat:stream` invoke runs the workflow
+and shows in the observatory. See `aevatar-team-builder` then `aevatar-service-publisher`.
 
 ---
 
