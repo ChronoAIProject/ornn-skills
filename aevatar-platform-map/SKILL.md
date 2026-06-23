@@ -1,7 +1,7 @@
 ---
 name: aevatar-platform-map
-description: Panorama and entry point for driving the Aevatar control plane over its REST API. Load this FIRST whenever a user wants to build, publish, schedule, or operate things on Aevatar — "create an agent team", "make a workflow / member", "publish/bind a service", "register it with NyxID", "set up a recurring/scheduled run", "deploy an agent", "invoke my service". It teaches the object model (scope → team → member(workflow/script/gagent) → service → schedule), how to authenticate with a NyxID token, how to resolve your scope, and which companion skill to use for each task. It does not perform the work itself — it routes you to the right step.
-version: "1.0"
+description: Panorama, entry point, and catalog for the whole Aevatar skill collection driven over its REST API. Load this FIRST whenever a user wants to build, publish, schedule, or operate things on Aevatar — "create an agent team", "make a workflow / member", "publish/bind a service", "register it with NyxID", "set up a recurring/scheduled run", "deploy an agent", "invoke my service" — or just wants to know what aevatar skills exist. It teaches the object model (scope → team → member(workflow/script/gagent) → service → schedule), how to authenticate with a NyxID token, how to resolve your scope, and indexes every member of the aevatar skill family (control-plane + authoring + diagnostics + safety-net), all held together by the shared `aevatar` tag. It does not perform the work itself — it routes you to the right companion skill.
+version: "1.1"
 metadata:
   category: plain
   tag:
@@ -72,6 +72,35 @@ If a companion skill is not already loaded, find it with an ornn skill search fo
 capability (e.g. "aevatar team builder", "aevatar service publisher", "aevatar
 scheduler"), then load it. None of them depend on this map at run time — they restate the
 minimal bootstrap above.
+
+## The full aevatar skill collection
+
+ornn has no separate "collection" object — the aevatar capability set is held together by
+a shared **`aevatar` tag** and indexed by this map. An ornn skill search for **`aevatar`**
+returns the whole family as one set; load whichever member you need with `use_skill`. This
+map is the canonical entry point; the rest are pulled on demand.
+
+**Build & operate — the control-plane family** (client REST, `category: plain`, public)
+- `aevatar-platform-map` — *this map*: object model, auth + scope bootstrap, routing.
+- `aevatar-team-builder` — create teams; create + bind members (workflow/script/gagent); set the entry member.
+- `aevatar-service-publisher` — publish a member/team/workflow as a service; verify NyxID registration; invoke.
+- `aevatar-scheduler` — cron schedules that fire a service (scope-owner NyxID auth).
+
+**Author a workflow** (`category: tool-based`, public)
+- `aevatar-workflow-authoring` — turn a request into a validated, persisted workflow YAML
+  (server-side `aevatar_start_workflow` / `ornn_publish_skill`). Its output is the workflow
+  a `team-builder` member binds or a `service-publisher` scope binding publishes.
+
+**Diagnose — capability probes** (`category: plain`; currently private/owner-only)
+- `aevatar-capability-probe`, `aevatar-workflow-engine-probe`, `aevatar-scripting-probe`,
+  `aevatar-vision-probe`, `aevatar-attachment-probe`, `aevatar-file-extract-probe` —
+  small self-tests that check whether a given platform capability is available in the
+  current scope before you depend on it.
+
+**Safety net — cross-cutting** (`category: plain`, public)
+- `fallback-to-calling-agent` — when you genuinely cannot finish a request server-side,
+  hand the original problem back to the calling agent instead of failing opaquely. Generic
+  (no `aevatar` tag), but part of how this family degrades safely.
 
 ## The golden path, end to end
 
