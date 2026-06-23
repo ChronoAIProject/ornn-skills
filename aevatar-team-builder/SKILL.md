@@ -1,7 +1,7 @@
 ---
 name: aevatar-team-builder
 description: Build an Aevatar agent team and its members over the REST API. Use when a user wants to "create a team", "add a member", "make a workflow member / script member / gagent member", "set the team's entry point", or "assemble agents into a team". It creates the team, creates members whose implementation is a workflow (most common), a script, or a hosted gagent, binds each member's concrete implementation (the workflow YAML is attached here), waits for the async binding to succeed, and sets the team entry member. Author the workflow YAML first with the workflow-authoring skill; publish the result as a service with the service-publisher skill.
-version: "1.1"
+version: "1.2"
 metadata:
   category: plain
   tag:
@@ -30,6 +30,12 @@ TOK=$(tr -d '\n' < ~/.nyxid/access_token)        # or the agent's own NyxID bear
 scopeId=$(curl -s -H "Authorization: Bearer $TOK" "$BASE/api/studio/context" | jq -r .scopeId)
 auth=(-H "Authorization: Bearer $TOK" -H "Content-Type: application/json")
 ```
+
+> **`jq` is only for convenience** — any JSON reader works (replace `| jq -r .scopeId` with
+> `| python3 -c 'import sys,json;print(json.load(sys.stdin)["scopeId"])'`). Make these calls with
+> the **`curl` binary**, not Python's `urllib`/`requests` (a WAF may 403 those). And because the
+> create/bind calls are async and can occasionally return a **transient empty body**, always read
+> the response status/JSON back — retry once on an empty body — rather than assuming success.
 
 Member implementation kinds are the lowercase strings **`workflow`**, **`script`**,
 **`gagent`**.

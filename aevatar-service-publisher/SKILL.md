@@ -1,7 +1,7 @@
 ---
 name: aevatar-service-publisher
 description: Publish an Aevatar member, team, or workflow as an invocable service and (host permitting) register it with NyxID, then verify and invoke it — all over the REST API. Use when a user wants to "publish/bind a service", "expose my workflow/team as a service", "register it with NyxID", "make it callable", "get the service slug/URL", "invoke my service", or "version/deploy/roll out a service". It covers the simple scope binding, reading back a member's published service, the full account-level service lifecycle (revision → publish → deploy → rollout), how to confirm the NyxID registration (slug + status), and how to invoke an endpoint. Build the team/member first with the team-builder skill.
-version: "1.1"
+version: "1.2"
 metadata:
   category: plain
   tag:
@@ -29,6 +29,14 @@ TOK=$(tr -d '\n' < ~/.nyxid/access_token)        # or the agent's own NyxID bear
 scopeId=$(curl -s -H "Authorization: Bearer $TOK" "$BASE/api/studio/context" | jq -r .scopeId)
 auth=(-H "Authorization: Bearer $TOK" -H "Content-Type: application/json")
 ```
+
+> **`jq` is only for convenience** — any JSON reader works (replace `| jq -r .scopeId` with
+> `| python3 -c 'import sys,json;print(json.load(sys.stdin)["scopeId"])'`). Make these calls with
+> the **`curl` binary**, not Python's `urllib`/`requests` (a WAF may 403 those). On the streaming
+> `:stream` invoke, the SSE `data:` frames interleave lifecycle frames
+> (`stepStarted`/`stepFinished`/`runFinished`/`stateSnapshot`/`usage`, keyed by a top-level field)
+> with raw observation frames (`custom.name: aevatar.raw.observed`) that carry the step **output
+> text** — there is no flat `type` field, so parse for those keys, not `obj.type`.
 
 ## First, the honest constraint about NyxID registration
 
