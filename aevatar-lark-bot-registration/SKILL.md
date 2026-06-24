@@ -11,7 +11,7 @@ metadata:
     - bot-registration
     - nyxid
     - relay
-version: "2.0"
+version: "2.1"
 lastUpdated: 2026-06-24
 ---
 
@@ -37,6 +37,7 @@ lastUpdated: 2026-06-24
 ```bash
 export NYXID_LARK_APP_SECRET='…'
 export NYXID_LARK_VERIFICATION_TOKEN='…'
+export NYXID_LARK_BOT_TOKEN='__unused_for_lark__'   # Lark auth is app_id:app_secret, but `channel-bot register` still requires a non-empty bot-token — a placeholder is fine
 nyxid whoami    # confirm you are the intended bot-owner account
 ```
 
@@ -50,11 +51,13 @@ nyxid channel-bot register \
   --label "My Lark Bot" \
   --app-id cli_xxxxxxxxxxxxxxxx \
   --app-secret-env NYXID_LARK_APP_SECRET \
+  --token-env NYXID_LARK_BOT_TOKEN \
   --verification-token "$NYXID_LARK_VERIFICATION_TOKEN" \
   --output json
 # (Feishu: --platform feishu. Optional --encrypt-key only if you set an Encrypt Key in the console.)
 ```
 
+- **`--token-env` is mandatory even for Lark** — Lark authenticates via `app_id:app_secret`, but the CLI/backend still require a non-empty `bot_token`; the placeholder from §0 is fine and unused. Omitting it errors with `bot token is required` (and the CLI then blocks on an interactive prompt).
 - NyxID validates `app_id`/`app_secret` against Lark at this point (a wrong secret fails here). `--verification-token` is **required** for lark/feishu.
 - Global uniqueness: only **one active** bot per `app_id` may exist across all NyxID users/orgs. If you already registered this app (e.g. shared to an org), `nyxid channel-bot delete <id>` the old one first or reuse it.
 - Save the returned bot **`id`** (the `BOT_ID`) and the `permission_setup_url` (used in step 5).
@@ -70,11 +73,10 @@ nyxid api-key create \
   --scopes "read write" \
   --callback-url https://aevatar-console-backend-api.aevatar.ai/api/webhooks/nyxid-relay \
   --allow-all-services \
-  --terminal \
   --output json
 ```
 
-- `--terminal` prints the full key **once** — copy it if you need it; you mainly need the api-key **`id`** for step 3.
+- `--output json` returns the api-key **`id`** (needed for step 3) plus the `full_key` (shown once). You mainly need the `id`. **The create response omits `callback_url`** — verify it stuck with `nyxid api-key show <id> --output json`.
 - `--allow-all-services` (or `--allowed-services api-lark-bot,<llm-slug>`) lets the relayed turn reach the proxy + LLM services.
 - **This api-key is the inbound scope identity:** NyxID mints the relay callback token from it, and aevatar reads the bot-owner scope from that token (`scope_id ?? sub`). No aevatar-side mirror is involved.
 - REST: `POST /api/v1/api-keys` (a.k.a. `/api/v1/keys`).
@@ -99,15 +101,15 @@ nyxid channel-bot route create \
 ## 4. Connect the `api-lark-bot` proxy (proactive Lark tools only) — *spec: `references/api-contract.md` §5*
 
 ```bash
-nyxid service add api-lark-bot --credential "$LARK_APP_CREDS" --label "Lark bot proxy"
-# or, if no catalog entry exists:
-# nyxid service add-custom --label api-lark-bot \
-#   --endpoint-url https://open.larksuite.com \   # feishu: https://open.feishu.cn
-#   --credential "$CREDS" --auth-method header --auth-key-name Authorization
+# api-lark-bot is a token_exchange catalog service: the credential MUST be a JSON object {app_id, app_secret}
+# (a bare string or app_id:app_secret is rejected with "must be a JSON object"). Pass it via --credential-env.
+export LARK_APP_CREDS='{"app_id":"cli_xxxxxxxxxxxxxxxx","app_secret":"'"$NYXID_LARK_APP_SECRET"'"}'
+nyxid service add api-lark-bot --credential-env LARK_APP_CREDS --label "Lark App cli_xxxxxxxxxxxxxxxx" --output json
 ```
 
 - Needed for the agent's **proactive** Lark calls — `send`/`edit`/`react`/CardKit streaming — which aevatar issues via the `api-lark-bot` NyxID proxy (`/api/v1/proxy/s/api-lark-bot/…`).
 - **Not required for the basic relay text reply** — NyxID sends that itself via its own platform adapter when aevatar POSTs to `/api/v1/channel-relay/reply`. Skip this step if you only need plain replies.
+- ⚠️ **The `api-lark-bot` slug is shared.** aevatar resolves the proxy by the bare slug `api-lark-bot` with **no per-bot disambiguation**. If the owner already has another *personal* `api-lark-bot` service (a different Lark app), proactive calls may route to the wrong app's creds. Keep **one personal `api-lark-bot` per owner** — delete retired ones with `nyxid service delete <service_id>` (find it via `nyxid service list --output json`). Org-shared `api-lark-bot` services don't collide with the personal one.
 
 ---
 
@@ -115,12 +117,15 @@ nyxid service add api-lark-bot --credential "$LARK_APP_CREDS" --label "Lark bot 
 
 NyxID does not auto-register the webhook; the bot stays `pending_webhook` until the first verified inbound event. In the console for your `app_id`:
 
-1. **Event Subscription Request URL** = `https://nyx-api.chrono-ai.fun/api/v1/webhooks/channel/lark/<BOT_ID>` (Feishu: `…/channel/feishu/<BOT_ID>` — the segment must match `--platform`).
+1. **Event Subscription Request URL (回调/请求地址)** = `https://nyx-api.chrono-ai.fun/api/v1/webhooks/channel/lark/<BOT_ID>` (Feishu: `…/channel/feishu/<BOT_ID>` — the segment must match `--platform`).
 2. **Verification Token** = the exact value from step 1's `--verification-token`.
 3. **Encrypt Key** — leave blank unless you registered one with `--encrypt-key`.
 4. Grant scopes **`im:message`** and **`im:message:send_as_bot`** (open the `permission_setup_url` from step 1 to pre-select them).
 5. Subscribe the message-received event (`im.message.receive_v1`) and **publish/release** the app version.
 6. Confirm: `nyxid channel-bot verify <BOT_ID>` (re-registers the webhook + checks the token).
+
+- **One URL for everything.** Card-action callbacks (`card.action.trigger`, i.e. interactive buttons) ride on the **same** event-subscription URL — NyxID's adapter handles both events and card actions at `…/channel/lark/<BOT_ID>`. If the console exposes a separate "card callback / 卡片请求网址" field, fill it with the **same** URL.
+- ⚠️ **Don't confuse the two callbacks.** The URL above (`nyx-api.chrono-ai.fun/.../channel/lark/<BOT_ID>`) is the one you paste into the **Lark console** (Lark → NyxID). The aevatar relay URL (`…/api/webhooks/nyxid-relay`) is the `callback_url` on the **relay api-key** from step 2 (NyxID → aevatar) — it is **not** entered in the Lark console.
 
 ---
 
