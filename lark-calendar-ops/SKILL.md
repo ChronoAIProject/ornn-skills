@@ -1,7 +1,7 @@
 ---
 name: lark-calendar-ops
-version: "1.0"
-description: Calendar assistant over Lark calendar APIs — check free/busy across people, find a common slot, create or update an event with attendees, and answer "我今天/这周有什么安排". Doubles as the calendar-scope probe — if the bot tenant lacks calendar scopes it reports the exact missing permission instead of failing.
+version: "1.1"
+description: Calendar assistant over the bot's NyxID-brokered Lark calendar/v4 APIs — list calendars, check free/busy across people, find a common slot, read your agenda for a window, and create or update events with attendees. Knows the event-time shape (a timestamp + timezone object, not RFC3339) and that attendees are added in a separate call, and doubles as the calendar-scope probe — on a scope 403 it reports the exact missing permission instead of failing.
 metadata:
   category: plain
   tag:
@@ -23,6 +23,17 @@ Use this for scheduling asks in chat: "明天下午约个会 / 看看我和某�
 yet field-proven for this bot tenant — so this skill is also the probe: run the cheapest read
 first, and if it 403s, report the exact scope error verbatim plus what to grant, then stop
 gracefully. Never invent availability.
+
+## Two footguns
+
+1. **Event times are objects, not RFC3339 strings.** `start_time` / `end_time` in a create/update
+   body are `{"timestamp":"<unix seconds>","timezone":"Asia/Shanghai"}`. Convert the user's
+   wall-clock to unix seconds in their timezone for the request; only use RFC3339 / human strings
+   when you SAY the time back, never inside the body.
+2. **Attendees and free/busy are separate from the create.** Creating an event does NOT add
+   attendees — `POST .../events/{event_id}/attendees` is a second call after the create. And
+   `freebusy/list` returns busy blocks WITHOUT titles for other people — report availability as
+   busy/free, never invent an event title you did not read from the requester's own calendar.
 
 ## How to run it
 

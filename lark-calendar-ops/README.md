@@ -1,6 +1,6 @@
 # lark-calendar-ops
 
-> Calendar assistant over Lark calendar APIs — check free/busy across people, find a common slot, create or update an event with attendees, and answer "我今天/这周有什么安排". Doubles as the calendar-scope probe — if the bot tenant lacks calendar scopes it reports the exact missing permission instead of failing.
+> Calendar assistant over the bot's NyxID-brokered Lark calendar/v4 APIs — list calendars, check free/busy across people, find a common slot, read your agenda for a window, and create or update events with attendees. Knows the event-time shape (a timestamp + timezone object, not RFC3339) and that attendees are added in a separate call, and doubles as the calendar-scope probe — on a scope 403 it reports the exact missing permission instead of failing.
 
 ---
 
@@ -8,8 +8,8 @@
 
 Edits here are NOT propagated back. Submit changes on Ornn.
 
-- Latest version: `1.0`
-- Last synced: `2026-06-26T03:31:12.805Z`
+- Latest version: `1.1`
+- Last synced: `2026-06-26T03:34:44.706Z`
 
 ## Install
 
