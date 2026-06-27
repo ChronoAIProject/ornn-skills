@@ -1,7 +1,7 @@
 ---
 name: aevatar-platform-map
 description: Entry point, panorama, and router for the entire Aevatar skill family — load this FIRST whenever someone wants to build, run, publish, schedule, or operate anything on Aevatar ("create an agent team", "make a workflow / member", "publish or bind a service", "register it with NyxID", "set up a recurring / cron run", "invoke my service"), wants to know whether something is even possible ("can Aevatar do X?", "能不能用 aevatar 实现"), or just wants to know what Aevatar can do. It teaches the object model (scope → team → member[workflow|script|gagent] → service → schedule), how to authenticate as a NyxID-bearer REST client, how to resolve your scope, and the two caller modes (client REST vs in-session server-side tools). It does not do the work itself — it routes you to the right companion skill (feasibility-advisor, workflow-authoring, team-builder, service-publisher, scheduler, plus diagnostics probes and the safety-net fallback), held together by the shared `aevatar` tag.
-version: "1.4"
+version: "1.5"
 metadata:
   category: plain
   tag:
@@ -102,6 +102,7 @@ endpoints (they are not).
 | You want to… | Use the skill | Key endpoints |
 |---|---|---|
 | **Decide if a goal is even possible** + what must be in place first (use FIRST, before building) | `aevatar-feasibility-advisor` | read-only `GET /api/v1/services`, `GET /api/v1/catalog` (NyxID) |
+| **Triage a failure** — is it an aevatar / nyxid / ornn problem? read the code, then file an issue or get authoritative usage guidance (use AFTER something breaks) | `aevatar-triage` | reads repos via `gh` or `nyxid_proxy` `api-github`; `gh issue` |
 | Turn an idea into a runnable **workflow YAML** | `aevatar-workflow-authoring` | server-side tools `aevatar_start_workflow`/`ornn_publish_skill`, **or** client REST `…/workflow/draft-run` + ornn zip publish (see *Two caller modes*) |
 | Create a **team**, create **members** (workflow/script/gagent), bind them, set the entry member | `aevatar-team-builder` | `/api/scopes/{id}/teams`, `/members`, `/members/{id}/binding` |
 | **Publish** a member/team **as a service** and **register it to NyxID**; verify it | `aevatar-service-publisher` | `/api/scopes/{id}/binding`, `/api/services/*`, `/members/{id}/published-service` |
@@ -124,6 +125,12 @@ map is the canonical entry point; the rest are pulled on demand.
 - `aevatar-feasibility-advisor` — *use before building*: is the goal possible, what are its
   prerequisites (which NyxID connector to configure, what's host-gated), and what's impossible
   + the alternative. Teaches the connector-vs-channel split and the prerequisite matrix.
+
+**Diagnose & report — triage** (`category: plain`)
+- `aevatar-triage` — *use after something breaks*: attribute a failure across aevatar / NyxID /
+  Ornn, read the layer's real code for a code-grounded root cause, then file a GitHub issue
+  (confirmation-gated) for a genuine platform defect, or give authoritative, code-grounded usage
+  guidance for a misuse. The after-it-breaks counterpart to `aevatar-feasibility-advisor`.
 
 **Build & operate — the control-plane family** (client REST, `category: plain`, public)
 - `aevatar-platform-map` — *this map*: object model, auth + scope bootstrap, routing.
