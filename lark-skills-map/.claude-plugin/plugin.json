@@ -1,0 +1,5 @@
+{
+  "name": "lark-skills-map",
+  "version": "1.0",
+  "description": "Index, router, and dependency map for the aevatar Lark/Feishu skill family on ornn — load this FIRST when someone wants the bot to do anything in Lark (send a message, recall a chat, write a doc / sheet / Base record, manage a calendar event, run an approval). It names the six core operation primitives (im / docx / sheets / bitable / calendar / approval), states the one shared premise (every call goes through nyxid_proxy slug api-lark-bot, scope-probe-first), routes intent to exactly one primitive, lists which business workflows consume them, and flags the current cleanup items. It does not call Lark itself — it routes to the right ops skill."
+}

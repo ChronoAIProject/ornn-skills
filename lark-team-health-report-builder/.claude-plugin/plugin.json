@@ -1,0 +1,5 @@
+{
+  "name": "lark-team-health-report-builder",
+  "version": "1.0",
+  "description": "Builds Lark team-health command parsing, progress-message payloads, and report-message payloads from collected GitHub and AI analysis results."
+}

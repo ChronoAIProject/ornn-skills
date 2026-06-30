@@ -1,0 +1,5 @@
+{
+  "name": "japanese-to-chinese-translator",
+  "version": "0.1",
+  "description": "Translate Japanese text into Chinese with support for tone, context, and output style preferences."
+}

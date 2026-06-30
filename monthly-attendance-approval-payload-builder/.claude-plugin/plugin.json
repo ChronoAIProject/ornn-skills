@@ -1,0 +1,5 @@
+{
+  "name": "monthly-attendance-approval-payload-builder",
+  "version": "1.1",
+  "description": "Builds Lark monthly attendance approval/reminder payloads and, when asked, runs the full attendance flow through a NyxID service instead of direct Lark credentials."
+}

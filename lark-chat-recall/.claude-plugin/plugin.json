@@ -1,0 +1,5 @@
+{
+  "name": "lark-chat-recall",
+  "version": "1.2",
+  "description": "Recall and summarize Lark conversations — pull a chat's history over a time window through the real im/v1 history API, reconstruct discussions, and answer \"who said what\" with quoted evidence. Use for \"总结这个群今天聊了什么 / 上周谁提过X / 找一下关于Y的讨论\". Requires the bot tenant scope im:message.group_msg; reports the exact missing scope verbatim when absent."
+}

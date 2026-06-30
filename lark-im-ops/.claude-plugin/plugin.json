@@ -1,0 +1,5 @@
+{
+  "name": "lark-im-ops",
+  "version": "1.1",
+  "description": "Send, reply to, react to, read, and find Lark messages and chats through the bot's NyxID-brokered im/v1 APIs — proactively post to a chat or DM, thread-reply, add or remove emoji reactions, read a single message or pull a chat's history over a time window, search or list the chats the bot is in, and download an image/file from a message. Handles the \"content must be a JSON string\" footgun and receive_id_type selection, and doubles as the im-scope probe — on a scope 403 it reports the exact missing permission instead of failing silently."
+}

@@ -1,0 +1,5 @@
+{
+  "name": "aevatar-service-publisher",
+  "version": "1.3",
+  "description": "Publish an Aevatar member, team, or workflow as an invocable service and (host permitting) register it with NyxID, then verify and invoke it — all over the REST API. Use when a user wants to \"publish/bind a service\", \"expose my workflow/team as a service\", \"register it with NyxID\", \"make it callable\", \"get the service slug/URL\", \"invoke my service\", or \"version/deploy/roll out a service\". It covers the simple scope binding, reading back a member's published service, the full account-level service lifecycle (revision → publish → deploy → rollout), how to confirm the NyxID registration (slug + status), and how to invoke an endpoint. Build the team/member first with the team-builder skill."
+}

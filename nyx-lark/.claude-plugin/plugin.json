@@ -1,0 +1,5 @@
+{
+  "name": "nyx-lark",
+  "version": "0.1",
+  "description": "Lark/Feishu integration via NyxID proxy. Replaces lark-cli — call Lark OpenAPI directly through nyxid proxy request with automatic credential injection."
+}

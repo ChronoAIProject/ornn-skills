@@ -1,0 +1,5 @@
+{
+  "name": "fallback-to-calling-agent",
+  "version": "1.0",
+  "description": "Universal try-catch fallback for the aevatar model. Use whenever, after a genuine attempt, you cannot complete the user's request with available server-side capabilities — no matching skill/workflow/connector/tool, a terminal failure, or a task that inherently needs the caller's local environment (files, shell, local context). Instead of failing opaquely or fabricating, return the original request verbatim to the calling agent so it can finish with its own local tools. Generic by design — addresses \"the calling agent\" with no hardcoded client or skill names."
+}

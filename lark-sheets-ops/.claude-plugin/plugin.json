@@ -1,0 +1,5 @@
+{
+  "name": "lark-sheets-ops",
+  "version": "1.0",
+  "description": "Read and write Lark Sheets (电子表格) through the bot's NyxID-brokered sheets APIs — find a spreadsheet and its sheet ids, read a cell range, append rows to the bottom, and overwrite a range. Handles the range format (sheetId!A1:D10) and the valueRange wrapper, extracts the spreadsheet_token from a share URL, and doubles as the sheets-scope probe — on a scope 403 it reports the exact missing permission. Lark Sheets here is the spreadsheet product, distinct from Lark Base / Bitable — use the Base skill for Bitable tables."
+}

@@ -1,0 +1,5 @@
+{
+  "name": "firecrawl-via-nyxid",
+  "version": "1.1",
+  "description": "Teach an aevatar agent to run Firecrawl web-research/agent jobs through NyxID (submit, poll, then read the result)."
+}

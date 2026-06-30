@@ -1,0 +1,5 @@
+{
+  "name": "chrono-team-health",
+  "version": "1.7",
+  "description": "Run a real GitHub-based team health / performance audit for the Chrono AI engineering team. Triggers on \"team health\", \"团队健康\", \"全员审计\", \"全员绩效\", \"绩效审计\", \"check the team\". Runs a fixed self-contained script via code_execute and returns a red/yellow/green report; posts it to Lark."
+}

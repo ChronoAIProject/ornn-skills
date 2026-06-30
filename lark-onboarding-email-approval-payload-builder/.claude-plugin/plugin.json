@@ -1,0 +1,5 @@
+{
+  "name": "lark-onboarding-email-approval-payload-builder",
+  "version": "1.1",
+  "description": "Builds the connector-ready Lark approval instance payload for the onboarding email approval flow. Use after Aevatar has received a Lark/Base onboarding event and before calling the NyxID Lark approval connector."
+}
