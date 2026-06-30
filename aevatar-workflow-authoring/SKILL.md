@@ -1,7 +1,7 @@
 ---
 name: aevatar-workflow-authoring
 description: Author, validate, and persist an executable aevatar workflow from a natural-language request — use it when the user wants to create, build, set up, or automate a multi-step task as a runnable aevatar workflow (make a workflow that…, automate…, build a pipeline…, set up a recurring…). It generates workflow YAML, dispatch-validates it, then saves it as a reusable workflow that can be re-run and watched in the observatory. Not for running an existing workflow — search for that and start it instead.
-version: "1.4"
+version: "1.5"
 metadata:
   category: tool-based
   tool-list:
@@ -279,6 +279,8 @@ Advanced notes: `human_approval`/`wait_signal` suspend the run until a resume/si
 > - **`transform op: split` joins all parts with `\n---\n` and ignores any `index`** — it is for fan-out, not single-element extraction. To use one segment of `a/b` (e.g. an `owner/repo` in a path), pass the whole string where the `/` is already correct rather than splitting it apart.
 > - **`conditional.condition`** is interpolated first; if the result is not literally `true`/`false`, the engine does a substring `$input.Contains(condition)`. Since there is no `contains` function, build "any/all contain token" checks around this: `concat` the inputs into one string in the prior step, then set `condition` to the literal token.
 > - **`parallel` (and `race`) feed every branch the *same* `$input`** and each sub-step is always an `llm_call`. For *different* input per branch — the "N different sources" shape — split a list with `foreach` / `map_reduce` instead. All four merge sub-step outputs with `\n---\n`. `map_reduce`'s map sub-steps receive **no** per-step parameters (drive them via the map role's `system_prompt`); only `foreach` passes `sub_param_*` to each child, so per-item `tool_call` fetches must use `foreach`.
+> - **`switch.on` that resolves to empty silently takes the WRONG branch.** `switch` evaluates `on` first; if it resolves to empty — e.g. `${steps.read.json.off_count}` when that field is absent, which is exactly what happens when the prior tool returned an *error envelope* (`{"error":true,"status":503,...}`) instead of the expected object — `switch` **falls back to matching the step's whole `$input`**, and matching is exact → **substring-contains** → `_default`. So a 503 error body substring-matches a branch key `"0"` (via `"503"`/`"8001"`) and quietly routes as if the value were `0`. **Always make `on` a clean, never-empty token:** `on: "${eq(steps.read.json.off_count, '0')}"` with branches `"true"` / `"false"` / `_default`. Never branch on a raw count/field that can go missing.
+> - **A side-effecting workflow MUST read back and assert the real end state — a step "success" does NOT mean the side effect happened.** Because a failed tool call returns its error as ordinary step output (above), an action step like `turn_on` / `post` / `create` completes "successfully" even when nothing changed (e.g. the downstream returned 503). Pattern: after the action, add a `tool_call` that **reads the real state** (have the upstream API compute a scalar you can branch on — e.g. an HA `/template` returning `{"off_count":N}`), `switch` on `${eq(<count>,'0')}`; on the not-yet-satisfied branch `delay` + re-read for a bounded retry, and on final failure route to a `guard` with `on_fail: fail` so the **run actually fails** (red in the observatory) instead of a green run that did nothing. Do not trust `${steps.<action>.success}`.
 
 ---
 
